@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: model-monitoring
+  labels:
+    app: model-monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: model-monitoring
+  template:
+    metadata:
+      labels:
+        app: model-monitoring
+    spec:
+      containers:
+      - name: model-monitoring
+        image: ${DOCKER_REGISTRY}/model-monitoring:latest
+        ports:
+        - containerPort: 8501
+        env:
+        - name: MINIO_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: minio-config
+              key: endpoint
+        - name: MINIO_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-secret
+              key: access-key
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-secret
+              key: secret-key
+        - name: MINIO_BUCKET
+          value: "model-data"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: model-monitoring
+spec:
+  selector:
+    app: model-monitoring
+  ports:
+  - port: 80
+    targetPort: 8501
+  type: ClusterIP

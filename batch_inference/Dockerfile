@@ -1,6 +1,5 @@
 FROM python:3.11-slim
 
-# Set working directory
 WORKDIR /app
 
 # Install system dependencies
@@ -8,12 +7,15 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
+# Copy requirements first to leverage Docker cache
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy data preparation scripts
-COPY data_prep.py data_prep.py
+# Copy the batch inference script
+COPY batch_inference.py .
 
-# Command to run the data preparation script
-CMD ["python", "data_prep.py"]
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+
+# Run the batch inference script
+CMD ["python", "batch_inference.py"] 
