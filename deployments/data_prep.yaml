@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ml-workflow
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: data-prep-deployment
+  namespace: ml-workflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: data-prep
+  template:
+    metadata:
+      labels:
+        app: data-prep
+    spec:
+      containers:
+      - name: data-prep
+        image: alameda_data_prep:25.05.2
+        imagePullPolicy: Never
+        env:
+        - name: MINIO_ENDPOINT
+          value: "minio.ml-workflow.svc.cluster.local:9000"
+        - name: IMG_TAG
+          value: "25.05.1"
+        - name: CREATE_HOLDOUT
+          value: "true"
+        - name: NFS_MOUNT_PATH
+          value: "/data/data/data"
+        volumeMounts:
+        - name: data-volume
+          mountPath: /data
+          readOnly: false
+      volumes: 
+        - name: data-volume
+          hostPath:
+            path: /data
+            type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: data-prep
+  namespace: ml-workflow
+spec:
+  ports:
+  - port: 8080
+    targetPort: 8080
+  selector:
+    app: data-prep
