@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ml-workflow
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: model-train-deployment
+  namespace: ml-workflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: model-train-deployment
+  template:
+    metadata:
+      labels:
+        app: model-train-deployment
+    spec:
+      containers:
+      - name: model-train-deployment
+        image: alameda_model_training:25.05.3
+        imagePullPolicy: Never
+        resources:
+          requests:
+            memory: 3Gi
+          limits:
+            memory: 4Gi
+        env:
+        - name: MLFLOW_TRACKING_URI
+          valueFrom:
+            configMapKeyRef:
+              name: ml-config
+              key: MLFLOW_TRACKING_URI
+        - name: MINIO_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: ml-config
+              key: MINIO_ENDPOINT
+        - name: MINIO_ACCESS_KEY
+          valueFrom:
+            configMapKeyRef:
+              name: ml-config
+              key: MINIO_ACCESS_KEY
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            configMapKeyRef:
+              name: ml-config
+              key: MINIO_SECRET_KEY
+        - name: IMG_TAG
+          value: "25.05.2"
+        - name: DATA_PREP_TAG
+          value: "25.05.3"

@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ml-config
+  namespace: ml-workflow
+data:
+  MINIO_ENDPOINT: "minio.ml-workflow.svc.cluster.local:9000"
+  MLFLOW_TRACKING_URI: "http://mlflow-service.ml-workflow.svc.cluster.local:5000"
+  MINIO_ACCESS_KEY: "minioadmin"
+  MINIO_SECRET_KEY: "minioadmin"
+  MLFLOW_S3_IGNORE_TLS: "true"

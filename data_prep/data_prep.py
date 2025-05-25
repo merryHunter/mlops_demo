@@ -16,8 +16,8 @@ if not minio_endpoint:
     raise ValueError("MINIO_ENDPOINT environment variable is not set")
 
 NFS_MOUNT_PATH =  os.getenv("NFS_MOUNT_PATH")
-minio_access_key = os.getenv('MINIO_ACCESS_KEY', 'minioadmin')
-minio_secret_key = os.getenv('MINIO_SECRET_KEY', 'minioadmin')
+minio_access_key = os.getenv('MINIO_ACCESS_KEY')
+minio_secret_key = os.getenv('MINIO_SECRET_KEY')
 minio_secure = os.getenv('MINIO_SECURE', 'False').lower() == 'true'
 
 # Version prefix to have lineage with docker image version
@@ -125,7 +125,6 @@ class MinioETL:
             bucket_name=train_bucket,
             object_name=train_object_name,
         )
-        return None
     
 
 def main():
