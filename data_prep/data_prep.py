@@ -84,8 +84,8 @@ class MinioETL:
                 df.write_parquet(temp_filename)
                 self.client.fput_object(
                     bucket_name=target_bucket,
-                    destination_file=object_name,
-                    source_file=temp_filename,
+                    object_name=object_name,
+                    file_path=temp_filename,
                 )
                 
                 logger.info(f"Successfully uploaded {file_path.name} to {target_bucket}/{object_name}")
@@ -93,16 +93,22 @@ class MinioETL:
             except Exception as e:
                 logger.error(f"Failed to upload {file_path.name} to {target_bucket}/{object_name}: {str(e)}")
 
-    def create_holdout_set(self, train_bucket) -> None:
+    def create_holdout_set(self, train_bucket, prefix, holdout_bucket) -> None:
         """ 
+        Selects first file in train bucket and moves it to holdout bucket.
         holdout_size - number of samples
         args: target_ratio - distribution of 1/0 in holdout
         """
-        # take first file in train and move to holdout
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        holdout_object_name = f"{timestamp}.parquet"
+        if not self.client.bucket_exists(holdout_bucket):
+            logger.info(f"Creating bucket: {holdout_bucket}")
+            self.client.make_bucket(holdout_bucket)
+        holdout_object_name = f"{prefix}.parquet"
         # get all objects in train and get 1
-        train_object_name = self.client.list_objects(train_bucket)[-1].object_name
+        for obj in self.client.list_objects(train_bucket, recursive=True):
+            if obj.object_name.endswith('.parquet'):
+                train_object_name = obj.object_name
+                break
+
         temp_filename = "temp.parquet"
         self.client.fget_object(
             bucket_name=train_bucket,
@@ -111,8 +117,8 @@ class MinioETL:
         )
         self.client.fput_object(
             bucket_name=HOLDOUT_BUCKET,
-            destination_file=holdout_object_name,
-            source_file=temp_filename,
+            object_name=holdout_object_name,
+            file_path=temp_filename,
         )
         # remove file from train bucket
         self.client.remove_object(
@@ -135,7 +141,9 @@ def main():
                 logger.warning(f"Source directory {source_dir} does not exist, skipping {bucket}")
 
         if CREATE_HOLDOUT == "true":
-            etl.create_holdout_set(train_bucket="train")
+            etl.create_holdout_set(train_bucket="train", 
+                                   prefix=VERSION_PREFIX,
+                                    holdout_bucket=HOLDOUT_BUCKET)
 
             
     except Exception as e:
