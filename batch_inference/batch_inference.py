@@ -5,10 +5,13 @@ import pandas as pd
 import numpy as np
 from minio import Minio
 from sklearn.base import BaseEstimator
+from sklearn.linear_model import LogisticRegression
 from multiprocessing import Pool, cpu_count
 from typing import List, Dict, Any
 import logging
 from datetime import datetime
+import mlflow
+import mlflow.sklearn
 
 # Configure logging
 logging.basicConfig(
@@ -23,8 +26,14 @@ class MinioClient:
             endpoint=endpoint,
             access_key=access_key,
             secret_key=secret_key,
-            secure=True
+            secure=False
         )
+
+    def ensure_buckets_exist(self, bucket):
+        """Create MinIO buckets if they don't exist."""
+        if not self.client.bucket_exists(bucket):
+            logger.info(f"Creating bucket: {bucket}")
+            self.client.make_bucket(bucket)
 
     def get_model(self, bucket: str, model_path: str) -> BaseEstimator:
         """Load model from MinIO."""
@@ -75,20 +84,62 @@ class MinioClient:
             logger.error(f"Error saving predictions to MinIO: {str(e)}")
             raise
 
+    def get_latest_model(self, bucket: str) -> BaseEstimator:
+        """Get the latest model pickle file from MinIO based on timestamp."""
+        try:
+            # List all objects in the bucket with the given prefix
+            objects = self.client.list_objects(bucket, recursive=True)
+            
+            # Filter for .pkl files and sort by last modified time
+            model_files = [
+                obj for obj in objects 
+                if obj.object_name.endswith('.pkl')
+            ]
+            
+            if not model_files:
+                raise ValueError(f"No model files found in {bucket}")
+            
+            # Sort by last modified time (newest first)
+            latest_model = sorted(model_files, key=lambda x: x.last_modified, reverse=True)[0]
+            
+            # Download and load the model
+            response = self.client.get_object(bucket, latest_model.object_name)
+            model_data = response.read()
+            
+            # Load the model as a logistic regression
+            model = pickle.loads(model_data)
+            if not isinstance(model, LogisticRegression):
+                raise ValueError("Loaded model is not a LogisticRegression instance")
+            
+            logger.info(f"Successfully loaded latest model from {latest_model.object_name}")
+            return model
+            
+        except Exception as e:
+            logger.error(f"Error loading latest model from MinIO: {str(e)}")
+            raise
+
 def process_shard(args: Dict[str, Any]) -> pd.DataFrame:
     """Process a single parquet shard."""
-    minio_client = args['minio_client']
     bucket = args['bucket']
     object_name = args['object_name']
     model = args['model']
-    features = args['features']
+    minio_config = args['minio_config']
 
     try:
+        # Create new MinioClient instance for this process
+        minio_client = MinioClient(
+            endpoint=minio_config['endpoint'],
+            access_key=minio_config['access_key'],
+            secret_key=minio_config['secret_key']
+        )
+        
         # Read parquet file
-        df = minio_client.read_parquet(bucket, object_name)
+        logger.info(f"Reading {bucket}/{object_name} ...")
+        response = minio_client.client.get_object(bucket, object_name)
+        df = pd.read_parquet(io.BytesIO(response.read()))
         
         # Make predictions
-        predictions = model.predict(df[features])
+        predictions = model.predict(df.drop(['date', 'customerId', 'target'], axis=1))
         
         # Add predictions to dataframe
         df['predictions'] = predictions
@@ -100,15 +151,12 @@ def process_shard(args: Dict[str, Any]) -> pd.DataFrame:
 
 def main():
     # MinIO configuration
-    MINIO_ENDPOINT = os.getenv('MINIO_ENDPOINT', 'minio:9000')
+    MINIO_ENDPOINT = os.getenv('MINIO_ENDPOINT')
     MINIO_ACCESS_KEY = os.getenv('MINIO_ACCESS_KEY')
     MINIO_SECRET_KEY = os.getenv('MINIO_SECRET_KEY')
-    MODEL_BUCKET = os.getenv('MODEL_BUCKET', 'models')
-    DATA_BUCKET = os.getenv('DATA_BUCKET', 'data')
+    DATA_BUCKET = os.getenv('DATA_BUCKET', 'predict')
     RESULTS_BUCKET = os.getenv('RESULTS_BUCKET', 'results')
-    MODEL_PATH = os.getenv('MODEL_PATH', 'production/model.pkl')
-    DATA_PREFIX = os.getenv('DATA_PREFIX', 'input/')
-    FEATURES = os.getenv('FEATURES', '').split(',')
+    PREDICT_PREFIX = os.getenv('PREDICT_PREFIX')
     
     if not all([MINIO_ACCESS_KEY, MINIO_SECRET_KEY]):
         raise ValueError("MINIO_ACCESS_KEY and MINIO_SECRET_KEY must be set")
@@ -116,30 +164,37 @@ def main():
     # Initialize MinIO client
     minio_client = MinioClient(MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY)
     
-    # Load model
-    logger.info("Loading model from MinIO...")
-    model = minio_client.get_model(MODEL_BUCKET, MODEL_PATH)
+    logger.info("Loading model from Minio...")
+    model = minio_client.get_latest_model(
+            bucket=os.getenv('MODEL_BUCKET', 'models')
+    )
     
     # Get list of parquet files
     logger.info("Listing parquet files...")
-    parquet_files = minio_client.get_parquet_shards(DATA_BUCKET, DATA_PREFIX)
+    parquet_files = minio_client.get_parquet_shards(DATA_BUCKET, PREDICT_PREFIX)
     
     if not parquet_files:
         logger.warning("No parquet files found!")
         return
     
     # Prepare arguments for multiprocessing
+    minio_config = {
+        'endpoint': MINIO_ENDPOINT,
+        'access_key': MINIO_ACCESS_KEY,
+        'secret_key': MINIO_SECRET_KEY
+    }
+    
     process_args = [{
-        'minio_client': minio_client,
         'bucket': DATA_BUCKET,
         'object_name': file,
         'model': model,
-        'features': FEATURES
+        'minio_config': minio_config
     } for file in parquet_files]
     
     # Process files in parallel
-    logger.info(f"Processing {len(parquet_files)} files using {cpu_count()} processes...")
-    with Pool(processes=cpu_count()) as pool:
+    n_processes = min(cpu_count(), len(process_args))
+    logger.info(f"Processing {len(parquet_files)} files using {n_processes} processes...")
+    with Pool(processes=n_processes) as pool:
         results = pool.map(process_shard, process_args)
     
     # Combine results
@@ -149,10 +204,11 @@ def main():
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     output_prefix = f"{timestamp}/"
     output_filename = "predictions.parquet"
-    output_path = f"{output_prefix}{output_filename}"
+    output_path = f"{PREDICT_PREFIX}/{output_prefix}{output_filename}"
     
     # Save results to MinIO
     logger.info(f"Saving predictions to MinIO bucket '{RESULTS_BUCKET}' with prefix '{output_prefix}'...")
+    minio_client.ensure_buckets_exist(RESULTS_BUCKET)
     minio_client.save_parquet(final_df, RESULTS_BUCKET, output_path)
     
     logger.info("Batch inference completed successfully!")

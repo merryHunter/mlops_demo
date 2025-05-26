@@ -6,22 +6,18 @@ metadata:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: model-train-deployment
+  name: model-batch-inference
   namespace: ml-workflow
 spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: model-train-deployment
   template:
     metadata:
       labels:
-        app: model-train-deployment
+        app: model-batch-inference
     spec:
       restartPolicy: OnFailure
       containers:
-      - name: model-train-deployment
-        image: alameda_model_training:25.05.3
+      - name: model-batch-inference
+        image: alameda_batch_inference:26.05.1
         imagePullPolicy: Never
         resources:
           requests:
@@ -50,6 +46,6 @@ spec:
               name: ml-config
               key: MINIO_SECRET_KEY
         - name: IMG_TAG
-          value: "25.05.2"
-        - name: DATA_PREP_TAG
+          value: "26.05.1"
+        - name: PREDICT_PREFIX
           value: "25.05.3"

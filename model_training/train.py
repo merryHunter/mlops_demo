@@ -175,7 +175,7 @@ class CustomerClassifierTrainer:
         })
         mlflow.log_table(self.feature_importance, "feature_importance.json")
 
-    def save_model_to_minio(self, run_id: str) -> None:
+    def save_model_to_minio(self, prefix: str) -> None:
         """Save model to MinIO in pickle format"""
         try:
             # Create pickle buffer
@@ -184,7 +184,7 @@ class CustomerClassifierTrainer:
             model_buffer.seek(0)
             
             # Create model path with run ID
-            model_path = f"{self.run_name}/model.pkl"
+            model_path = f"{prefix}/model.pkl"
             
             # Upload to MinIO
             minio_client = self._get_minio_client()
@@ -238,7 +238,7 @@ class CustomerClassifierTrainer:
                 self.log_to_mlflow(target_ratio, list(X_train.columns))
                 
                 # Save model to MinIO
-                self.save_model_to_minio(run.info.run_id)
+                self.save_model_to_minio(self.run_name)
                 
                 # Log results
                 logger.info("\nModel Performance Metrics:")
