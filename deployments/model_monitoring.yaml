@@ -21,7 +21,7 @@ spec:
         - containerPort: 8501
         env:
         - name: DATA_PREFIX
-          value: "25.05.3"
+          value: "25.05.1"
         envFrom:
         - configMapRef:
             name: ml-config

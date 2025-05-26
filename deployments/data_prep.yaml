@@ -21,13 +21,13 @@ spec:
       restartPolicy: OnFailure
       containers:
       - name: data-prep
-        image: alameda_data_prep:25.05.3
+        image: alameda_data_prep:25.05.1
         imagePullPolicy: Never
         env:
         - name: MINIO_ENDPOINT
           value: "minio.ml-workflow.svc.cluster.local:9000"
         - name: IMG_TAG
-          value: "25.05.3"
+          value: "25.05.1"
         - name: CREATE_HOLDOUT
           value: "true"
         - name: NFS_MOUNT_PATH

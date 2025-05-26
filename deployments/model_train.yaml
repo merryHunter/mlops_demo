@@ -21,7 +21,7 @@ spec:
       restartPolicy: OnFailure
       containers:
       - name: model-train-deployment
-        image: alameda_model_training:25.05.3
+        image: alameda_model_training:25.05.1
         imagePullPolicy: Never
         resources:
           requests:
@@ -50,6 +50,6 @@ spec:
               name: ml-config
               key: MINIO_SECRET_KEY
         - name: IMG_TAG
-          value: "25.05.2"
+          value: "25.05.1"
         - name: DATA_PREP_TAG
-          value: "25.05.3"
+          value: "25.05.1"

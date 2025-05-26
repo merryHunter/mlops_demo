@@ -32,10 +32,13 @@ This step populates `train` and `predict` bucket with transformed features, and 
 `kubectl apply -f deployments/model_training.yaml`
 
 8. Run `alameda_batch_inference:25.05.1`container:  
-`kubectl apply -f deployments/batch_inference.yaml`
+`kubectl apply -f deployments/model_batch_inference.yaml`
 
-9. Start model monitoring with duckdb for data querying:  
-`kubectl apply -f deployments/batch_inference.yaml`
+9. Launch postgres for storing predictions:
+`kubectl apply -f deployments/postgres.yaml`  
+
+10. Start model monitoring with :  
+`kubectl apply -f deployments/model_monitoring.yaml`
 
 ## Access UI dashboards
 
@@ -46,3 +49,8 @@ Run `./forward_ports.sh` and navigate to MINIo, MLFlow and AlamedaMonitoring das
 - data memory usage overflow for non-distributed processing of data load for model training
 - simplified data feature engineering (no map-reduce to efficiently calculate features across shards of data)
 - config map is used for secrets for simplicity
+- deployment specs are not fully parametrized
+
+## Known issues
+
+Reproducing fully might require manual involvement to properly set img tags for a consistent execution. 
