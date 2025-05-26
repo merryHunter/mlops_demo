@@ -49,10 +49,6 @@ Run `./forward_ports.sh` and navigate to MINIo, MLFlow and AlamedaMonitoring das
 
 ### Todo:
 
-- run batch inference
-- register / tag best model with tag 'production'
-- retrieve model for batch inference with tag 'production'
-- write model informaiton alongside results predict
 - view monitoring dashboard 
 - forward ports script
 - dashboard screenshots

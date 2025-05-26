@@ -84,7 +84,7 @@ class MinioClient:
             logger.error(f"Error saving predictions to MinIO: {str(e)}")
             raise
 
-    def get_latest_model(self, bucket: str) -> BaseEstimator:
+    def get_latest_model(self, bucket: str):
         """Get the latest model pickle file from MinIO based on timestamp."""
         try:
             # List all objects in the bucket with the given prefix
@@ -112,7 +112,7 @@ class MinioClient:
                 raise ValueError("Loaded model is not a LogisticRegression instance")
             
             logger.info(f"Successfully loaded latest model from {latest_model.object_name}")
-            return model
+            return model, latest_model.object_name.split('/')[-2] # skip pickle
             
         except Exception as e:
             logger.error(f"Error loading latest model from MinIO: {str(e)}")
@@ -165,7 +165,7 @@ def main():
     minio_client = MinioClient(MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY)
     
     logger.info("Loading model from Minio...")
-    model = minio_client.get_latest_model(
+    model, model_name = minio_client.get_latest_model(
             bucket=os.getenv('MODEL_BUCKET', 'models')
     )
     
@@ -202,9 +202,9 @@ def main():
     
     # Generate timestamp-based prefix
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    output_prefix = f"{timestamp}/"
+    output_prefix = f"{PREDICT_PREFIX}/{model_name}/{timestamp}"
     output_filename = "predictions.parquet"
-    output_path = f"{PREDICT_PREFIX}/{output_prefix}{output_filename}"
+    output_path = f"{output_prefix}/{output_filename}"
     
     # Save results to MinIO
     logger.info(f"Saving predictions to MinIO bucket '{RESULTS_BUCKET}' with prefix '{output_prefix}'...")
