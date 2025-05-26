@@ -4,11 +4,13 @@
 
 - Installed minikube and docker desktop
 - disable firewall for network access if needed
+- unzip data and mount location for data access
 
 ## Workflow
 
 1. Start minikube with data mapping for data load:  
-` minikube start --mount-string="$HOME/go/src/github.com/nginx:/data" --mount`
+`minikube start --mount-string="D:/mlops_pipeline_demo/data:/data" --mount` or 
+`minikube start --mount-string="/home/<user>/mlops_pipeline_demo/data:/data" --mount`
 
 2. Create config map:  
 `kubectl create configmap ml-config --from-file config-maps/config-map.yaml -n ml-workflow`  
