@@ -2,7 +2,6 @@ import os
 import io
 import pickle
 import pandas as pd
-import numpy as np
 from minio import Minio
 from sklearn.base import BaseEstimator
 from sklearn.linear_model import LogisticRegression
@@ -10,8 +9,8 @@ from multiprocessing import Pool, cpu_count
 from typing import List, Dict, Any
 import logging
 from datetime import datetime
-import mlflow
-import mlflow.sklearn
+from upload_predictions import upload_csv_to_pg
+
 
 # Configure logging
 logging.basicConfig(
@@ -124,6 +123,7 @@ def process_shard(args: Dict[str, Any]) -> pd.DataFrame:
     object_name = args['object_name']
     model = args['model']
     minio_config = args['minio_config']
+    model_name = args['model_name']
 
     try:
         # Create new MinioClient instance for this process
@@ -143,6 +143,7 @@ def process_shard(args: Dict[str, Any]) -> pd.DataFrame:
         
         # Add predictions to dataframe
         df['predictions'] = predictions
+        df['model_name'] = model_name
         
         return df
     except Exception as e:
@@ -188,7 +189,8 @@ def main():
         'bucket': DATA_BUCKET,
         'object_name': file,
         'model': model,
-        'minio_config': minio_config
+        'minio_config': minio_config,
+        'model_name': model_name
     } for file in parquet_files]
     
     # Process files in parallel
@@ -210,7 +212,9 @@ def main():
     logger.info(f"Saving predictions to MinIO bucket '{RESULTS_BUCKET}' with prefix '{output_prefix}'...")
     minio_client.ensure_buckets_exist(RESULTS_BUCKET)
     minio_client.save_parquet(final_df, RESULTS_BUCKET, output_path)
-    
+    local_fname = 'predictions.csv'
+    final_df.to_csv(local_fname, index=False)
+    upload_csv_to_pg(local_fname)
     logger.info("Batch inference completed successfully!")
 
 if __name__ == "__main__":

@@ -16,34 +16,20 @@ spec:
     spec:
       containers:
       - name: model-monitoring
-        image: alameda_model_monitoring:25.05.1 
+        image: alameda_model_monitoring:25.05.1
         ports:
         - containerPort: 8501
         env:
-        - name: MINIO_ENDPOINT
-          valueFrom:
-            configMapKeyRef:
-              name: ml-config
-              key: MINIO_ENDPOINT
-        - name: MINIO_ACCESS_KEY
-          valueFrom:
-            configMapKeyRef:
-              name: ml-config
-              key: MINIO_ACCESS_KEY
-        - name: MINIO_SECRET_KEY
-          valueFrom:
-            configMapKeyRef:
-              name: ml-config
-              key: MINIO_SECRET_KEY
-        - name: MINIO_BUCKET
-          value: "train"
+        - name: DATA_PREFIX
+          value: "25.05.3"
+        envFrom:
+        - configMapRef:
+            name: ml-config
         resources:
           requests:
-            memory: "512Mi"
-            cpu: "250m"
+            memory: "4Gi"
           limits:
-            memory: "1Gi"
-            cpu: "500m"
+            memory: "4Gi"
 ---
 apiVersion: v1
 kind: Service

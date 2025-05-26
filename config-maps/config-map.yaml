@@ -9,3 +9,7 @@ data:
   MINIO_ACCESS_KEY: "minioadmin"
   MINIO_SECRET_KEY: "minioadmin"
   MLFLOW_S3_IGNORE_TLS: "true"
+  POSTGRES_DB: "model_monitoring"
+  POSTGRES_USER: "postgres"
+  POSTGRES_PASSWORD: "postgres"
+  POSTGRES_HOST: "postgres-0.postgres.ml-workflow.svc.cluster.local"

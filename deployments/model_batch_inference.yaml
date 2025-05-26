@@ -24,27 +24,10 @@ spec:
             memory: 3Gi
           limits:
             memory: 4Gi
+        envFrom:
+        - configMapRef:
+            name: ml-config
         env:
-        - name: MLFLOW_TRACKING_URI
-          valueFrom:
-            configMapKeyRef:
-              name: ml-config
-              key: MLFLOW_TRACKING_URI
-        - name: MINIO_ENDPOINT
-          valueFrom:
-            configMapKeyRef:
-              name: ml-config
-              key: MINIO_ENDPOINT
-        - name: MINIO_ACCESS_KEY
-          valueFrom:
-            configMapKeyRef:
-              name: ml-config
-              key: MINIO_ACCESS_KEY
-        - name: MINIO_SECRET_KEY
-          valueFrom:
-            configMapKeyRef:
-              name: ml-config
-              key: MINIO_SECRET_KEY
         - name: IMG_TAG
           value: "26.05.1"
         - name: PREDICT_PREFIX

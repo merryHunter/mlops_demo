@@ -8,7 +8,7 @@
 
 ## Workflow
 
-1. Start minikube with data mapping for data load:  
+1. Assuming `data.zip` is unzipped to current directory `mlops_pipeline_demo`, start minikube with data mapping for data load:  
 `minikube start --mount-string="D:/mlops_pipeline_demo/data:/data" --mount` or 
 `minikube start --mount-string="/home/<user>/mlops_pipeline_demo/data:/data" --mount`
 
@@ -46,12 +46,3 @@ Run `./forward_ports.sh` and navigate to MINIo, MLFlow and AlamedaMonitoring das
 - data memory usage overflow for non-distributed processing of data load for model training
 - simplified data feature engineering (no map-reduce to efficiently calculate features across shards of data)
 - config map is used for secrets for simplicity
-
-### Todo:
-
-- view monitoring dashboard 
-- forward ports script
-- dashboard screenshots
-- monitoring date range and model version
-- monitoring model performance
-- monitoring feature drift (current month, past month?)

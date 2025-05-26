@@ -12,6 +12,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the batch inference script
+COPY init.sql .
+COPY upload_predictions.py .
 COPY batch_inference.py .
 
 # Set environment variables
